@@ -92,9 +92,9 @@ client.on('interactionCreate', async (interaction) => {
         return interaction.reply({ content: "❌ Access Denied.", ephemeral: true });
     }
 
-    if (commandName === 'gen') {
-        await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ ephemeral: true });
 
+    if (commandName === 'gen') {
         const allData = await db.all();
         const existingEntry = allData.find(item => 
             item.id.startsWith("key_") && item.value.ownerId === user.id
@@ -116,25 +116,26 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     if (commandName === 'delete' || commandName === 'reset') {
-        if (!isAuthorized) return interaction.reply({ content: "❌ Admin only.", ephemeral: true });
+        if (!isAuthorized) return interaction.editReply({ content: "❌ Admin only." });
 
         if (commandName === 'delete') {
             const keyToDelete = options.getString('key');
             await db.delete(`key_${keyToDelete}`);
-            return interaction.reply({ content: `Deleted \`${keyToDelete}\``, ephemeral: true });
+            return interaction.editReply({ content: `Deleted \`${keyToDelete}\`` });
         }
 
         if (commandName === 'reset') {
             const allData = await db.all();
-            for (const entry of allData) {
-                if (entry.id.startsWith("key_")) await db.delete(entry.id);
-            }
-            return interaction.reply({ content: `Database cleared.`, ephemeral: true });
+            const keysToDelete = allData.filter(entry => entry.id.startsWith("key_"));
+            
+            await Promise.all(keysToDelete.map(entry => db.delete(entry.id)));
+            
+            return interaction.editReply({ content: `Database cleared (${keysToDelete.length} keys removed).` });
         }
     }
 });
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API running on port ${PORT}`));
 
 client.login(TOKEN);
+
