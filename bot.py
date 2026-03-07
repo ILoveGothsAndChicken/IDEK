@@ -171,4 +171,4 @@ if __name__ == "__main__":
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.daemon = True
     flask_thread.start()
-    bot.run(TOKEN)
+    bot.run(TOKEN, proxy="http://proxy.discord.rocks:3128")
