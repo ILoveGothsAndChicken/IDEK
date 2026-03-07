@@ -9,13 +9,8 @@ import os
 import datetime
 import secrets
 
-def get_token():
-    with open("C:\\Users\\zackm\\Downloads\\Token.txt") as f:
-        return f.read().strip()
-
-TOKEN = get_token()
-#AUTHORIZED_IDS = [911401729868857434, 1223823990632747109]
-AUTHORIZED_IDS = [1223823990632747109]
+TOKEN = os.environ.get("DISCORD_TOKEN")
+AUTHORIZED_IDS = [911401729868857434, 1223823990632747109]
 LOG_CHANNEL_ID = 1456110794776252528
 REQUIRED_ROLE_ID = 1340792386044956715
 DB_FILE = "database.json"
@@ -169,12 +164,11 @@ async def reset(interaction: discord.Interaction):
         await interaction.followup.send("❌ Failed to clear the database.")
 
 def run_flask():
-    app.run(host="0.0.0.0", port=10000, debug=False, use_reloader=False)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.daemon = True
     flask_thread.start()
-    
-    print("Starting Discord Bot...")
     bot.run(TOKEN)
