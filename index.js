@@ -82,60 +82,89 @@ client.on('ready', async () => {
 });
 
 client.on('interactionCreate', async (interaction) => {
+    // 1. Ignore anything that isn't a slash command
     if (!interaction.isChatInputCommand()) return;
 
+    // 2. ACKNOWLEDGE IMMEDIATELY
+    // This stops the "Application did not respond" error by telling Discord you're working on it.
+    try {
+        await interaction.deferReply({ ephemeral: true });
+    } catch (err) {
+        console.error("Error deferring interaction:", err);
+        return;
+    }
+
     const { commandName, user, options, member } = interaction;
-    const hasRole = member.roles.cache.has(REQUIRED_ROLE_ID);
+
+    // 3. Setup Permission Constants
+    // member.roles.cache can be undefined in DMs, so we use optional chaining (?.)
+    const hasRole = member?.roles?.cache.has(REQUIRED_ROLE_ID);
     const isAuthorized = AUTHORIZED_IDS.includes(user.id);
 
+    // 4. Handle Access Denied (Use editReply now that we've deferred)
     if (!hasRole && !isAuthorized) {
-        return interaction.reply({ content: "❌ Access Denied.", ephemeral: true });
+        return interaction.editReply({ content: "❌ Access Denied. You do not have the required role." });
     }
 
-    await interaction.deferReply({ ephemeral: true });
-
+    // --- COMMAND: GEN ---
     if (commandName === 'gen') {
-        const allData = await db.all();
-        const existingEntry = allData.find(item => 
-            item.id.startsWith("key_") && item.value.ownerId === user.id
-        );
+        try {
+            const allData = await db.all();
+            const existingEntry = allData.find(item => 
+                item.id.startsWith("key_") && item.value.ownerId === user.id
+            );
 
-        if (existingEntry) {
-            const keyName = existingEntry.id.replace("key_", "");
-            return interaction.editReply(`You already have a key: \`${keyName}\``);
+            if (existingEntry) {
+                const keyName = existingEntry.id.replace("key_", "");
+                return interaction.editReply(`You already have a key: \`${keyName}\``);
+            }
+
+            const newKey = "GT-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+            await db.set(`key_${newKey}`, { 
+                hwid: null, 
+                owner: user.tag,
+                ownerId: user.id 
+            });
+
+            return interaction.editReply(`**Key Generated!**\nKey: \`${newKey}\``);
+        } catch (dbError) {
+            console.error("Database Error (Gen):", dbError);
+            return interaction.editReply("❌ An error occurred while accessing the database.");
         }
-
-        const newKey = "GT-" + Math.random().toString(36).substring(2, 10).toUpperCase();
-        await db.set(`key_${newKey}`, { 
-            hwid: null, 
-            owner: user.tag,
-            ownerId: user.id 
-        });
-
-        return interaction.editReply(`**Key Generated!**\nKey: \`${newKey}\``);
     }
 
+    // --- COMMAND: DELETE & RESET (Admin Only) ---
     if (commandName === 'delete' || commandName === 'reset') {
-        if (!isAuthorized) return interaction.editReply({ content: "❌ Admin only." });
+        if (!isAuthorized) {
+            return interaction.editReply({ content: "❌ Admin only. You are not in the authorized IDs list." });
+        }
 
         if (commandName === 'delete') {
             const keyToDelete = options.getString('key');
             await db.delete(`key_${keyToDelete}`);
-            return interaction.editReply({ content: `Deleted \`${keyToDelete}\`` });
+            return interaction.editReply({ content: `Successfully deleted key: \`${keyToDelete}\`` });
         }
 
         if (commandName === 'reset') {
-            const allData = await db.all();
-            const keysToDelete = allData.filter(entry => entry.id.startsWith("key_"));
-            
-            await Promise.all(keysToDelete.map(entry => db.delete(entry.id)));
-            
-            return interaction.editReply({ content: `Database cleared (${keysToDelete.length} keys removed).` });
+            try {
+                const allData = await db.all();
+                const keysToDelete = allData.filter(entry => entry.id.startsWith("key_"));
+                
+                // Use Promise.all to delete everything at once instead of a slow loop
+                await Promise.all(keysToDelete.map(entry => db.delete(entry.id)));
+                
+                return interaction.editReply({ content: `✅ Database cleared. Removed ${keysToDelete.length} keys.` });
+            } catch (dbError) {
+                console.error("Database Error (Reset):", dbError);
+                return interaction.editReply("❌ Failed to clear the database.");
+            }
         }
     }
 });
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API running on port ${PORT}`));
 
 client.login(TOKEN);
+
 
