@@ -1,6 +1,7 @@
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
 const express = require('express');
 const { QuickDB } = require("quick.db");
+const axios = require('axios');
 
 const db = new QuickDB();
 const app = express();
@@ -166,8 +167,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API running on port ${PORT}`));
 
 client.login(TOKEN);
-
-const axios = require('axios');
 
 setInterval(() => {
   axios.get('https://gt-verification-api.onrender.com')
