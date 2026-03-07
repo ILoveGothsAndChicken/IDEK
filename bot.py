@@ -98,6 +98,7 @@ class MyBot(discord.Client):
                 print("❌ ERROR: Bot needs 'Manage Messages' permission!")
 
 bot = MyBot()
+bot.proxy = "http://proxy.discord.rocks:3128"
 
 @bot.tree.command(name="gen", description="Generate your key")
 async def gen(interaction: discord.Interaction):
@@ -171,4 +172,4 @@ if __name__ == "__main__":
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.daemon = True
     flask_thread.start()
-    bot.run(TOKEN, proxy="http://proxy.discord.rocks:3128")
+    bot.run(TOKEN)
