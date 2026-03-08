@@ -51,7 +51,12 @@ app.post('/verify', async (req, res) => {
     return res.send("HWID_MISMATCH");
 });
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({ 
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMembers // Add this
+    ] 
+});
 
 client.on('ready', async () => {
     console.log(`Logged in as ${client.user.tag}`);
@@ -165,6 +170,11 @@ client.on('interactionCreate', async (interaction) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API running on port ${PORT}`));
+
+client.on('error', console.error);
+process.on('unhandledRejection', error => {
+	console.error('Unhandled promise rejection:', error);
+}); 
 
 client.login(TOKEN);
 
