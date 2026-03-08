@@ -15,7 +15,7 @@ const AUTHORIZED_IDS = ["911401729868857434", "1223823990632747109"];
 const REQUIRED_ROLE_ID = "1340792386044956715";
 const RENDER_URL = "https://discord-bot-1-puhl.onrender.com";
 
-// --- WEB SERVER ---
+// --- 1. WEB SERVER SETUP (Must start first for Render) ---
 app.get('/', (req, res) => {
     res.send("Bot & API are Online 24/7.");
 });
@@ -52,21 +52,30 @@ app.post('/verify', async (req, res) => {
     return res.send("HWID_MISMATCH");
 });
 
-// --- DISCORD BOT ---
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ [SERVER] API Listening on port ${PORT}`);
+});
+
+// --- 2. DISCORD BOT SETUP ---
 const client = new Client({ 
     intents: [
         GatewayIntentBits.Guilds, 
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildPresences // Added to help with status visibility
+        GatewayIntentBits.GuildPresences 
     ] 
 });
 
-// Attempt Login Immediately
-console.log('[BOT] Attempting to connect to Discord...');
-client.login(TOKEN).catch(err => {
-    console.error(`[ERROR] Discord login failed: ${err.message}`);
-    console.error(`[DEBUG] Check if your 'TOKEN' environment variable is correct in Render.`);
-});
+// Attempt Login
+if (!TOKEN) {
+    console.error("❌ [ERROR] No TOKEN found in Render Environment Variables!");
+} else {
+    console.log('[BOT] Attempting to connect to Discord...');
+    client.login(TOKEN).catch(err => {
+        console.error(`❌ [ERROR] Discord login failed: ${err.message}`);
+        console.error(`[DEBUG] Verify your TOKEN is correct and all 3 Privileged Intents are ON in the Dev Portal.`);
+    });
+}
 
 client.on('ready', async () => {
     console.log(`✅ [BOT] Logged in as ${client.user.tag}`);
@@ -91,7 +100,7 @@ client.on('ready', async () => {
         await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
         console.log('✅ [BOT] Commands registered successfully.');
     } catch (error) {
-        console.error(`[ERROR] Registration failed: ${error}`);
+        console.error(`❌ [ERROR] Registration failed: ${error}`);
     }
 });
 
@@ -129,6 +138,7 @@ client.on('interactionCreate', async (interaction) => {
             await db.set(`key_${newKey}`, { hwid: null, owner: user.tag, ownerId: user.id });
             return interaction.editReply(`**Key Generated!**\nKey: \`${newKey}\``);
         } catch (err) {
+            console.error(err);
             return interaction.editReply("❌ Database error.");
         }
     }
@@ -149,12 +159,6 @@ client.on('interactionCreate', async (interaction) => {
             return interaction.editReply(`✅ Database wiped. Removed ${keys.length} keys.`);
         }
     }
-});
-
-// --- RENDER PORT BINDING ---
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`✅ [SERVER] API Listening on port ${PORT}`);
 });
 
 // Self-ping to keep alive
