@@ -9,18 +9,21 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// --- CONFIGURATION ---
 const TOKEN = process.env.TOKEN;
 const AUTHORIZED_IDS = ["911401729868857434", "1223823990632747109"];
 const REQUIRED_ROLE_ID = "1340792386044956715";
 const RENDER_URL = "https://discord-bot-1-puhl.onrender.com";
 
+// --- WEB SERVER ---
 app.get('/', (req, res) => {
     res.send("Bot & API are Online 24/7.");
 });
 
+// Verification Endpoint for Loader
 app.post('/verify', async (req, res) => {
     const { key, hwid } = req.body;
-    console.log(`[API] Received verify request. Key: ${key} | HWID: ${hwid}`);
+    console.log(`[API] Verify Attempt - Key: ${key} | HWID: ${hwid}`);
     
     if (!key || !hwid || hwid === "undefined" || hwid.length < 5) {
         return res.send("INVALID_REQUEST"); 
@@ -40,7 +43,7 @@ app.post('/verify', async (req, res) => {
 
     if (!keyData.hwid) {
         await db.set(`key_${key}`, { ...keyData, hwid: hwid });
-        console.log(`[DB] Key ${key} is now locked to HWID: ${hwid}`);
+        console.log(`[DB] Key ${key} locked to HWID: ${hwid}`);
         return res.send("SUCCESS");
     }
 
@@ -49,16 +52,26 @@ app.post('/verify', async (req, res) => {
     return res.send("HWID_MISMATCH");
 });
 
+// --- DISCORD BOT ---
 const client = new Client({ 
     intents: [
         GatewayIntentBits.Guilds, 
-        GatewayIntentBits.GuildMembers // Required to check roles
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildPresences // Added to help with status visibility
     ] 
 });
 
+// Attempt Login Immediately
+console.log('[BOT] Attempting to connect to Discord...');
+client.login(TOKEN).catch(err => {
+    console.error(`[ERROR] Discord login failed: ${err.message}`);
+    console.error(`[DEBUG] Check if your 'TOKEN' environment variable is correct in Render.`);
+});
+
 client.on('ready', async () => {
-    console.log(`[BOT] Logged in as ${client.user.tag}`);
+    console.log(`✅ [BOT] Logged in as ${client.user.tag}`);
     
+    // Force status to Online
     client.user.setPresence({
         activities: [{ name: 'Verifying Keys', type: 0 }],
         status: 'online',
@@ -74,27 +87,27 @@ client.on('ready', async () => {
     const rest = new REST({ version: '10' }).setToken(TOKEN);
 
     try {
-        console.log('[BOT] Registering slash commands...');
+        console.log('[BOT] Syncing slash commands...');
         await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-        console.log('[BOT] Commands registered successfully.');
+        console.log('✅ [BOT] Commands registered successfully.');
     } catch (error) {
         console.error(`[ERROR] Registration failed: ${error}`);
     }
 });
 
+// Interaction Handler
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
     
-    console.log(`[BOT] /${interaction.commandName} used by ${interaction.user.tag}`);
+    console.log(`[BOT] Command /${interaction.commandName} by ${interaction.user.tag}`);
 
     try {
         await interaction.deferReply({ ephemeral: true });
     } catch (err) {
-        console.error("[ERROR] Defer failed:", err);
         return;
     }
 
-    const { commandName, user, options, member } = interaction;
+    const { commandName, user, member } = interaction;
     const hasRole = member?.roles?.cache.has(REQUIRED_ROLE_ID);
     const isAuthorized = AUTHORIZED_IDS.includes(user.id);
 
@@ -116,8 +129,7 @@ client.on('interactionCreate', async (interaction) => {
             await db.set(`key_${newKey}`, { hwid: null, owner: user.tag, ownerId: user.id });
             return interaction.editReply(`**Key Generated!**\nKey: \`${newKey}\``);
         } catch (err) {
-            console.error(err);
-            return interaction.editReply("❌ Database error during generation.");
+            return interaction.editReply("❌ Database error.");
         }
     }
 
@@ -125,7 +137,7 @@ client.on('interactionCreate', async (interaction) => {
         if (!isAuthorized) return interaction.editReply("❌ Admin only.");
 
         if (commandName === 'delete') {
-            const target = options.getString('key');
+            const target = interaction.options.getString('key');
             await db.delete(`key_${target}`);
             return interaction.editReply(`Deleted key: \`${target}\``);
         }
@@ -139,13 +151,15 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => console.log(`[SERVER] API Listening on port ${PORT}`));
+// --- RENDER PORT BINDING ---
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ [SERVER] API Listening on port ${PORT}`);
+});
 
-client.login(TOKEN).catch(err => console.error(`[ERROR] Discord login failed: ${err}`));
-
+// Self-ping to keep alive
 setInterval(() => {
   axios.get(RENDER_URL) 
-    .then(() => console.log('[SERVER] Self-ping successful.'))
-    .catch(err => console.log('[SERVER] Ping failed (Server may be sleeping).'));
+    .then(() => console.log('[SERVER] Ping: Success'))
+    .catch(() => console.log('[SERVER] Ping: Failed (App may be sleeping)'));
 }, 1000 * 60 * 5);
