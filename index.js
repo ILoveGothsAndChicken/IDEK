@@ -169,7 +169,7 @@ app.listen(PORT, () => console.log(`API running on port ${PORT}`));
 client.login(TOKEN);
 
 setInterval(() => {
-  axios.get('https://gt-verification-api.onrender.com')
+  axios.get('https://discord-bot-1-puhl.onrender.com')
     .then(() => console.log('Self-ping successful: Bot is awake.'))
     .catch(err => console.error('Self-ping failed:', err.message));
 }, 1000 * 60 * 5); // Pings every 5 minutes
