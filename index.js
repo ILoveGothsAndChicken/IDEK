@@ -116,6 +116,6 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
-client.login("TOKEN"); 
+client.login(process.env.TOKEN);
 
 app.listen(PORT, '0.0.0.0', () => console.log(`Auth API listening on port ${PORT}`));
