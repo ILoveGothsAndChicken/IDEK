@@ -1,11 +1,18 @@
 const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes } = require('discord.js');
 const express = require('express');
 const fs = require('fs');
+const path = require('path');
 
-const ADMIN_ID = "1223823990632747109"; // Your ID
-const CLIENT_ID = "1459793118609150124"; // Your Bot's ID
+const ADMIN_ID = "1223823990632747109"; 
+const CLIENT_ID = "1459793118609150124"; 
 const PORT = process.env.PORT || 10000;
-const DATA_FILE = './keys.json';
+
+const DATA_DIR = '/data';
+const DATA_FILE = path.join(DATA_DIR, 'keys.json');
+
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
 let db = fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE)) : { keys: {}, users: {} };
 const saveDB = () => fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
@@ -13,7 +20,7 @@ const saveDB = () => fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
 const app = express();
 app.use(express.json());
 
-app.get('/', (req, res) => res.send("Auth Server is Online!"));
+app.get('/', (req, res) => res.send("Mafia Auth Server is Online!"));
 
 app.post('/verify', (req, res) => {
     const { key, hwid } = req.body;
@@ -33,9 +40,20 @@ app.post('/verify', (req, res) => {
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 const commands = [
-    new SlashCommandBuilder().setName('gen').setDescription('Generate your license key'),
-    new SlashCommandBuilder().setName('deletekey').setDescription('Admin: Delete a key').addStringOption(o => o.setName('key').setRequired(true)),
-    new SlashCommandBuilder().setName('resetkeys').setDescription('Admin: Wipe all keys')
+    new SlashCommandBuilder()
+        .setName('gen')
+        .setDescription('Generate your license key'),
+    new SlashCommandBuilder()
+        .setName('deletekey')
+        .setDescription('Admin: Delete a key')
+        .addStringOption(o => 
+            o.setName('key')
+            .setDescription('The license key to delete')
+            .setRequired(true)
+        ),
+    new SlashCommandBuilder()
+        .setName('resetkeys')
+        .setDescription('Admin: Wipe all keys')
 ].map(c => c.toJSON());
 
 client.on('ready', async () => {
@@ -67,7 +85,7 @@ client.on('interactionCreate', async (interaction) => {
         saveDB();
         
         await interaction.reply({ 
-            content: `Key Generated: \`${newKey}\` \nThis key will lock to the first PC that uses it in the GUI.`, 
+            content: `Key Generated: \`${newKey}\` \nThis key will lock to the first PC that uses it.`, 
             ephemeral: true 
         });
     }
