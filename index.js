@@ -7,7 +7,7 @@ const ADMIN_ID = "1223823990632747109";
 const CLIENT_ID = "1459793118609150124"; 
 const PORT = process.env.PORT || 10000;
 
-const DATA_DIR = '/data';
+const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'keys.json');
 
 if (!fs.existsSync(DATA_DIR)) {
@@ -58,7 +58,6 @@ const commands = [
 
 client.on('ready', async () => {
     console.log(`Logged in as ${client.user.tag}`);
-    
     const rest = new REST({ version: '10' }).setToken(client.token);
     try {
         await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
@@ -106,17 +105,17 @@ client.on('interactionCreate', async (interaction) => {
             saveDB();
             interaction.reply(`Key \`${keyToDelete}\` has been deleted.`);
         } else {
-            interaction.reply("Key not found in database.");
+            interaction.reply("Key not found.");
         }
     }
 
     if (interaction.commandName === 'resetkeys') {
         db = { keys: {}, users: {} };
         saveDB();
-        interaction.reply("The entire key database has been wiped.");
+        interaction.reply("Database wiped.");
     }
 });
 
-client.login('YOUR_BOT_TOKEN_HERE'); 
+client.login("TOKEN"); 
 
 app.listen(PORT, '0.0.0.0', () => console.log(`Auth API listening on port ${PORT}`));
