@@ -9,32 +9,35 @@ import threading
 
 ADMIN_ID = 1223823990632747109
 PORT = int(os.environ.get("PORT", 10000))
+TOKEN = os.environ.get("DISCORD_TOKEN")
 
 DATA_FILE = "keys.json"
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w") as f:
-        json.dump({"keys": {}, "users": {}}, f)
 
 def load_db():
+    if not os.path.exists(DATA_FILE):
+        return {"keys": {}, "users": {}}
     with open(DATA_FILE, "r") as f:
-        return json.load(f)
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            return {"keys": {}, "users": {}}
 
 def save_db(data):
     with open(DATA_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
+# --- FLASK SERVER ---
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Mafia Auth Server (Python) is Online!"
+    return "Mafia Auth Server is Online!"
 
 @app.route('/verify', methods=['POST'])
 def verify():
     data = request.json
     key = data.get("key")
     hwid = data.get("hwid")
-    
     db = load_db()
     
     if key not in db["keys"]:
@@ -55,6 +58,7 @@ def verify():
 def run_flask():
     app.run(host='0.0.0.0', port=PORT)
 
+# --- DISCORD BOT ---
 class MafiaBot(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
@@ -100,13 +104,21 @@ async def delete_key(interaction: discord.Interaction, key: str):
     db = load_db()
     if key in db["keys"]:
         owner_id = db["keys"][key]["owner"]
-        del db["users"][owner_id]
-        del db["keys"][key]
+        # Use .pop() to avoid errors if the user entry was somehow missing
+        db["users"].pop(owner_id, None)
+        db["keys"].pop(key, None)
         save_db(db)
         await interaction.response.send_message(f"Deleted `{key}`")
     else:
-        await interaction.response.send_message("Key not found.")
+        await interaction.response.send_message("Key not found.", ephemeral=True)
 
+# --- STARTUP ---
 if __name__ == "__main__":
-    threading.Thread(target=run_flask, daemon=True).start() 
-    bot.run(os.environ.get('DISCORD_TOKEN'))
+    # 1. Run Flask in background thread
+    threading.Thread(target=run_flask, daemon=True).start()
+    
+    # 2. Run Bot (Make sure DISCORD_TOKEN is set in Render Env)
+    if TOKEN:
+        bot.run(TOKEN)
+    else:
+        print("CRITICAL ERROR: 'DISCORD_TOKEN' environment variable is missing!")
