@@ -91,7 +91,7 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
-client.login(process.env.TOKEN);
+client.login("MTQ1OTc5MzExODYwOTE1MDEyNA.G56U3V.9EcKodbDCUOwWyJ7O7tgvOqvc7E-XvhELHsqOw");
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log("-----------------------------------------");
