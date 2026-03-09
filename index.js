@@ -14,9 +14,11 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 let db = fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE)) : { keys: {}, users: {} };
 const saveDB = () => fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
 
+// --- WEB SERVER ---
 const app = express();
 app.use(express.json());
 app.get('/', (req, res) => res.send("Mafia Auth Server is Online!"));
+
 app.post('/verify', (req, res) => {
     const { key, hwid } = req.body;
     if (!db.keys[key]) return res.status(404).json({ message: "Invalid Key" });
@@ -31,6 +33,7 @@ app.post('/verify', (req, res) => {
     res.status(403).json({ message: "HWID Mismatch" });
 });
 
+// --- DISCORD BOT ---
 const client = new Client({ 
     intents: [
         GatewayIntentBits.Guilds, 
@@ -46,13 +49,19 @@ const commands = [
 ].map(c => c.toJSON());
 
 client.on('ready', async () => {
-    console.log(`Logged in as ${client.user.tag}`);
+    // --- THIS WILL PRINT IN RENDER LOGS ---
+    console.log("-----------------------------------------");
+    console.log(`[!] BOT IS ONLINE: ${client.user.tag}`);
+    console.log("[!] Registering Slash Commands...");
+    console.log("-----------------------------------------");
     
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
         await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-        console.log("Slash Commands Loaded!");
-    } catch (e) { console.error(e); }
+        console.log("[+] Slash Commands Successfully Loaded!");
+    } catch (e) { 
+        console.error("[X] Failed to load commands:", e); 
+    }
 });
 
 client.on('interactionCreate', async (interaction) => {
@@ -83,4 +92,10 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 client.login(process.env.TOKEN);
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log("-----------------------------------------");
+    console.log(`[+] Web API started on Port ${PORT}`);
+    console.log(`[+] API URL: https://idek-26e7.onrender.com`);
+    console.log("-----------------------------------------");
+});
