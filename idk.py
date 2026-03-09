@@ -109,4 +109,4 @@ async def delete_key(interaction: discord.Interaction, key: str):
 
 if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start() 
-    bot.run('DISCORD_TOKEN')
+    bot.run(os.environ.get('DISCORD_TOKEN'))
