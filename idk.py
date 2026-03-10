@@ -24,18 +24,22 @@ def save_db(data):
     with open(DATA_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
+class MafiaBot(discord.Client):
+    def __init__(self):
+        intents = discord.Intents.default()
+        super().__init__(intents=intents)
+        self.tree = app_commands.CommandTree(self)
+
+    async def setup_hook(self):
+        await self.tree.sync()
+
+bot = MafiaBot()
+
 app = Flask(__name__)
 
 @app.route('/')
 def home():
     return "Mafia Auth Server (Python) is Online!"
-
-@bot.event
-async def on_ready():
-    print("-----------------------------------------")
-    print(f"[!] BOT IS ONLINE: {bot.user}")
-    print(f"[+] Web API started on Port {PORT}")
-    print("-----------------------------------------")
 
 @app.route('/verify', methods=['POST'])
 def verify():
@@ -62,17 +66,6 @@ def verify():
 
 def run_flask():
     app.run(host='0.0.0.0', port=PORT)
-
-class MafiaBot(discord.Client):
-    def __init__(self):
-        intents = discord.Intents.default()
-        super().__init__(intents=intents)
-        self.tree = app_commands.CommandTree(self)
-
-    async def setup_hook(self):
-        await self.tree.sync()
-
-bot = MafiaBot()
 
 @bot.event
 async def on_ready():
