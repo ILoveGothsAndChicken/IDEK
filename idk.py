@@ -109,8 +109,6 @@ async def delete_key(interaction: discord.Interaction, key: str):
         await interaction.response.send_message("Key not found.")
 
 if __name__ == "__main__":
-    threading.Thread(target=run_flask, daemon=True).start()
-    
     if TOKEN:
         bot.run(TOKEN)
     else:
